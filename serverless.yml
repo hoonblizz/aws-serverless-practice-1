@@ -6,6 +6,48 @@ frameworkVersion: '2'
 provider:
   name: aws
   runtime: nodejs12.x
+  region: us-west-2
+  stage: prod
+  memorySize: 128
+  timeout: 5
+  endpointType: regional
+  environment:
+    NOTES_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+
+
+resources:
+  Resources:
+    NoteTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain      # Not deleting table even after sls delete
+      Properties:
+        TableName: ${self:provider.environment.NOTES_TABLE}
+        AttributeDefinitions:
+          - AttributeName: user_id    # custom name of key
+            AttributeType: S          # String
+          - AttributeName: timestamp
+            AttributeType: N          # Number, Integer
+          - AttributeName: note_id
+            AttributeType: S
+        KeySchema:                    # Setting Primary key
+          - AttributeName: user_id
+            KeyType: HASH             # Partition Key
+          - AttributeName: timestamp
+            KeyType: RANGE            # Sort key
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        GlobalSecondaryIndexes:
+          - IndexName: note_id-index   # custom name
+            KeySchema: 
+              - AttributeName: note_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL     # Copy all item attributes to this index
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+
 
 
 functions:
