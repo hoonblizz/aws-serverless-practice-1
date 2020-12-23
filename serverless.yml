@@ -1,11 +1,32 @@
 
 service: sls-practice-note-backend
 
-frameworkVersion: '2'
+plugins:
+  - serverless-offline
+  - serverless-domain-manager
+
+custom:
+  allowedHeaders:
+    - Accept
+    - Content-Type
+    - Content-Length
+    - Authorization
+    - X-Amz-Date
+    - X-Api-Key
+    - X-Amz-Security-Token
+    - X-Amz-User-Agent
+    - app_user_id
+    - app_user_name
+  # customDomain:
+  #   domainName: api.notesapp.xyz
+  #   basePath: 'v1'
+  #   stage: ${self:provider.stage}
+  #   certificateName: notesapp.xyz
+  #   createRoute53Record: true
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs8.10
   region: us-west-2
   stage: prod
   memorySize: 128
@@ -13,43 +34,100 @@ provider:
   endpointType: regional
   environment:
     NOTES_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action: 
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.NOTES_TABLE}"
 
+functions:
+  add-note:
+    handler: api/add-note.handler
+    description: POST /note
+    events:
+      - http:
+          path: note
+          method: post
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+
+  update-note:
+    handler: api/update-note.handler
+    description: PATCH /note
+    events:
+      - http:
+          path: note
+          method: patch
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+
+  get-notes:
+    handler: api/get-notes.handler
+    description: GET /notes
+    events:
+      - http:
+          path: notes
+          method: get
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+
+  get-note:
+    handler: api/get-note.handler
+    description: GET /note/n/{note_id}
+    events:
+      - http:
+          path: note/n/{note_id}
+          method: get
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
+
+  delete-note:
+    handler: api/delete-note.handler
+    description: DELETE /note
+    events:
+      - http:
+          path: note/t/{timestamp}
+          method: delete
+          cors:
+            origin: '*'
+            headers: ${self:custom.allowedHeaders}
 
 resources:
   Resources:
-    NoteTable:
+    NotesTable:
       Type: AWS::DynamoDB::Table
-      DeletionPolicy: Retain      # Not deleting table even after sls delete
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:provider.environment.NOTES_TABLE}
         AttributeDefinitions:
-          - AttributeName: user_id    # custom name of key
-            AttributeType: S          # String
+          - AttributeName: user_id
+            AttributeType: S
           - AttributeName: timestamp
-            AttributeType: N          # Number, Integer
+            AttributeType: N
           - AttributeName: note_id
             AttributeType: S
-        KeySchema:                    # Setting Primary key
+        KeySchema:
           - AttributeName: user_id
-            KeyType: HASH             # Partition Key
+            KeyType: HASH
           - AttributeName: timestamp
-            KeyType: RANGE            # Sort key
+            KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
         GlobalSecondaryIndexes:
-          - IndexName: note_id-index   # custom name
-            KeySchema: 
+          - IndexName: note_id-index
+            KeySchema:
               - AttributeName: note_id
                 KeyType: HASH
             Projection:
-              ProjectionType: ALL     # Copy all item attributes to this index
+              ProjectionType: ALL
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
-
-
-
-functions:
-  hello:
-    handler: handler.hello
+            
