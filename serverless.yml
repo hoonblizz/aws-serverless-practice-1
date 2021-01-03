@@ -102,7 +102,7 @@ resources:
   Resources:
     NotesTable:
       Type: AWS::DynamoDB::Table
-      DeletionPolicy: Retain
+      #DeletionPolicy: Retain
       Properties:
         TableName: ${self:provider.environment.NOTES_TABLE}
         AttributeDefinitions:
