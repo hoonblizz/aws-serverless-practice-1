@@ -33,7 +33,7 @@ provider:
   timeout: 5
   endpointType: regional
   environment:
-    NOTES_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+    NOTES_TABLE: ${self:service}-${opt:stage, self:provider.stage}-notetable
   iamRoleStatements:
     - Effect: Allow
       Action: 
